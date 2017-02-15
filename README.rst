@@ -1,4 +1,4 @@
-jsub_cepc
+jsub-cepc
 #########
 
 JSUB extension for CEPC experment
