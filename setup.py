@@ -6,15 +6,12 @@ from setuptools import setup, find_packages
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-with open(os.path.join(here, 'jsub_cepc', 'VERSION')) as version_file:
-    version = version_file.read().strip()
-
 with open(os.path.join(here, 'README.rst')) as f:
     long_description = f.read()
 
 setup(
     name = 'jsub-cepc',
-    version = version,
+    version = '0.1.0.dev1',
     description = 'JSUB extension for CEPC experiment',
     long_description = long_description,
     url = 'https://jsubpy.github.io/exts/',
