@@ -23,45 +23,23 @@ source /cvmfs/cepc.ihep.ac.cn/software/cepcenv/setup.sh
 cepcenv use --default $JSUB_cepcsoft_version	
 
 
-
-# pass accepted arguments to the exe
-save_value=0
-for arg in "$@"
-do
-    if [ "$save_value" == 1 ]; then
-        stdhep_file=$arg
-        save_value=0
-        continue
-    fi  
-
-    if [ "--input_file" == "$arg" ]; then
-        job_args="${job_args} \"$arg\""
-        save_value=1
-        continue
-    fi 
- 
-    if [ "$save_value" == 2 ]; then
-        random_seed=$arg
-        save_value=0
-        continue
-    fi 
- 
-    if [ "--random_seed" == "$arg" ]; then
-        job_args="${job_args} \"$arg\""
-        save_value=2
-        continue
-    fi  
-done
-
+stdhep_file=$JSUB_sim_input_stdhep
+random_seed=$JSUB_sim_seed_jobvar
 
 #generate simu.macro and event macro
 simu_macro_template="${JSUB_input_common_dir}/simu_macro_template"
 event_macro_file="${JSUB_run_dir}/event.macro"
 simu_macro_file="${JSUB_run_dir}/simu.macro"
 
-stdhep_filename=${stdhep_file##*/}
-subjob_id=${stdhep_filename%.*}
+stdhep_basename=${stdhep_file##*/}
+subjob_id=${stdhep_basename%.*}
 lcio_output_file="$outputdir/${subjob_id}.slcio"
+
+#if running on remote backend, the path of input/output dir is overwritten to ../
+if [ "$JSUB_backend" == 'dirac'  ]; then
+    stdhep_file="../${stdhep_basename}"
+    lcio_output_file="../${subjob_id}.slcio"
+fi
 
 #create simu.macro from template
 cp $simu_macro_template $simu_macro_file
@@ -69,7 +47,7 @@ cp $simu_macro_template $simu_macro_file
 #create event.macro from scratch
 /bin/cat << END_EVENT_MACRO > $event_macro_file
 /generator/generator $stdhep_file
-/run/beamOn $JSUB_event_max
+/run/beamOn $JSUB_max_event
 END_EVENT_MACRO
 
 
@@ -88,6 +66,8 @@ echo "/Mokka/init/randomSeed " $random_seed	>> $simu_macro_file
 sync
 cat $out
 
+
+
 # save the exit code
 result=$?
 
@@ -97,5 +77,10 @@ if [ $result = 0 ]; then
 else
     echo "JSUB_FINAL_EXECUTION_STATUS = Failed ($result)"
     exit $result
+fi
+
+#if running on remote backend, put GearOutput.xml to ../
+if [ "$JSUB_backend" == 'dirac'  ]; then
+	cp "${JSUB_run_dir}/GearOutput.xml" ../
 fi
 

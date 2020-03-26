@@ -25,38 +25,11 @@ source /cvmfs/cepc.ihep.ac.cn/software/cepcenv/setup.sh
 cepcenv use --default $JSUB_cepcsoft_version	
 
 
-
-# pass accepted arguments to the exe
-save_value=0
-for arg in "$@"
-do
-    if [ "$save_value" == 1 ]; then
-        input_file=$arg	#input file may be stdhep file or slcio file
-        save_value=0
-        continue
-    fi  
-
-    if [ "--input_file" == "$arg" ]; then
-        job_args="${job_args} \"$arg\""
-        save_value=1
-        continue
-    fi 
- 
-    if [ "$save_value" == 2 ]; then
-        random_seed=$arg
-        save_value=0
-        continue
-    fi 
- 
-    if [ "--random_seed" == "$arg" ]; then
-        job_args="${job_args} \"$arg\""
-        save_value=2
-        continue
-    fi 
-
-done
-
-
+random_seed=$JSUB_rec_seed_jobvar
+input_file=$JSUB_rec_input_slcio #input file should be slcio file, if rec without sim
+if [ -n "$JSUB_sim_outdir" ]; then #otherwise use the input file of sim for basename
+	input_file=$JSUB_sim_input_stdhep
+fi
 
 #generate rec steering file from template
 rec_steering_template="${JSUB_input_common_dir}/rec_steering_template"
@@ -69,6 +42,7 @@ dst_output_file="$outputdir/${subjob_id}.dst.slcio"
 inv_mass_output_file="$outputdir/${subjob_id}.ana.root"
 lich_output_file="$outputdir/${subjob_id}.lich_output"
 
+
 if [ -n "$JSUB_sim_outdir" ]; then
 	#connecting sim and rec
 	slcio_input_file="$JSUB_sim_outdir/${subjob_id}.slcio"
@@ -78,6 +52,23 @@ else
 	slcio_input_file=$input_file
 	gear_xml_file=$JSUB_gear_xml_file
 fi
+
+#if running on remote backend, the path of input/output dir is overwritten to ../
+if [ "$JSUB_backend" == 'dirac'  ]; then
+	gear_xml_file_from_input_dir="${JSUB_input_common_dir}/gear_xml_file"
+	
+        if [ -f $gear_xml_file_from_input_dir ]; then
+		gear_xml_file=$gear_xml_file_from_input_dir
+        fi
+
+	slcio_input_file="../${subjob_id}.slcio"
+	lcio_output_file="../${subjob_id}.rec.slcio"
+	dst_output_file="../${subjob_id}.dst.slcio"
+	inv_mass_output_file="../${subjob_id}.ana.root"
+	lich_output_file="../${subjob_id}.lich_output"
+
+fi
+
 
 
 cp $rec_steering_template $rec_steering_file
