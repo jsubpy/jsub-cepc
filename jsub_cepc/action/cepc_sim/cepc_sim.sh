@@ -35,10 +35,10 @@ stdhep_basename=${stdhep_file##*/}
 subjob_id=${stdhep_basename%.*}
 lcio_output_file="$outputdir/${subjob_id}.slcio"
 
-#if running on remote backend, the path of input/output dir is overwritten to ../
+#if running on remote backend, the path of input/output dir is overwritten to ./
 if [ "$JSUB_backend" == 'dirac'  ]; then
-    stdhep_file="../${stdhep_basename}"
-    lcio_output_file="../${subjob_id}.slcio"
+    stdhep_file="./${stdhep_basename}"
+    lcio_output_file="./${subjob_id}.slcio"
 fi
 
 #create simu.macro from template
@@ -79,8 +79,4 @@ else
     exit $result
 fi
 
-#if running on remote backend, put GearOutput.xml to ../
-if [ "$JSUB_backend" == 'dirac'  ]; then
-	cp "${JSUB_run_dir}/GearOutput.xml" ../
-fi
 

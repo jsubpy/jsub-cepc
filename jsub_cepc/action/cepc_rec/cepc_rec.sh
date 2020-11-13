@@ -19,7 +19,6 @@ else
 fi
 
 
-
 #initialize cepc environment
 source /cvmfs/cepc.ihep.ac.cn/software/cepcenv/setup.sh
 cepcenv use --default $JSUB_cepcsoft_version	
@@ -53,7 +52,7 @@ else
 	gear_xml_file=$JSUB_gear_xml_file
 fi
 
-#if running on remote backend, the path of input/output dir is overwritten to ../
+#if running on remote backend, the path of input/output dir is overwritten to ./
 if [ "$JSUB_backend" == 'dirac'  ]; then
 	gear_xml_file_from_input_dir="${JSUB_input_common_dir}/gear_xml_file"
 	
@@ -61,11 +60,11 @@ if [ "$JSUB_backend" == 'dirac'  ]; then
 		gear_xml_file=$gear_xml_file_from_input_dir
         fi
 
-	slcio_input_file="../${subjob_id}.slcio"
-	lcio_output_file="../${subjob_id}.rec.slcio"
-	dst_output_file="../${subjob_id}.dst.slcio"
-	inv_mass_output_file="../${subjob_id}.ana.root"
-	lich_output_file="../${subjob_id}.lich_output"
+	slcio_input_file="./${subjob_id}.slcio"
+	lcio_output_file="./${subjob_id}.rec.slcio"
+	dst_output_file="./${subjob_id}.dst.slcio"
+	inv_mass_output_file="./${subjob_id}.ana.root"
+	lich_output_file="./${subjob_id}.lich_output"
 
 fi
 

@@ -1,7 +1,9 @@
 import os
 import subprocess
+from jsub.error import JsubError
 
 CEPC_APP_DIR = os.path.dirname(os.path.realpath(__file__))
+
 
 class CepcScenarioError(JsubError):
 	pass
@@ -56,7 +58,7 @@ class Cepc(object):
 				splitter['jobvar_lists']['sim_seed_jobvar']={'type':'composite_string','param':{'value': sim_input.get('seed')}}
 			
 
-		#cepc_rec workstep
+		#cepc_rec unit
 		if 'rec' in job_steps:
 			workflow['cepc_rec']={'type':'cepc_rec','actvar':{},'depend_on':[]}
 			rec_input=self.scenario_input.get('rec')		
@@ -75,7 +77,8 @@ class Cepc(object):
 			if 'sim' in job_steps:	#connect sim and rec
 				workflow['cepc_rec']['depend_on']+=['cepc_sim']
 				sim_input=self.scenario_input.get('sim')		
-				workflow['cepc_rec']['actvar']['sim_outdir']=sim_input.get('output_dir','../cepc_sim')
+#				workflow['cepc_rec']['actvar']['sim_outdir']=sim_input.get('output_dir','../cepc_sim')
+				workflow['cepc_rec']['actvar']['sim_outdir']=sim_input.get('output_dir','./')
 			else:	#rec directly	
 				#rec steering file			
 				if 'rec_steering_file' in rec_input:
@@ -93,10 +96,53 @@ class Cepc(object):
 
 
 
+		#user analysis
+		if 'user_alg' in job_steps:
+			workflow['cepc_alg']={'type':'cepc_alg','actvar':{},'depend_on':[]}
+			alg_input=self.scenario_input.get('user_alg')
+			#alg name
+			workflow['cepc_alg']['actvar']['algName']=alg_input.get('algName','')
+			#so file
+			workflow['cepc_alg']['actvar']['soFile']=alg_input.get('soFile','')
+			if 'soFile' in alg_input:
+				input_sandbox['common']['soFile']=alg_input.get('soFile')
+			else:
+				raise CepcScenarioError('soFile not defined for cepc_alg.')
+			#GearXMLFile template
+			if 'GearXMLFile' in alg_input:
+				input_sandbox['common']['GearXMLFile']=alg_input.get('GearXMLFile').get('template')
+				workflow['cepc_alg']['actvar']['GearXMLReplace']=alg_input.get('GearXMLFile').get('replace')
+			else:
+				raise CepcScenarioError('GearXMLFile not defined for cepc_alg.')
+			#output dir
+			workflow['cepc_alg']['actvar']['outputDir']=alg_input.get('outputDir','')
+			#output files
+			workflow['cepc_alg']['actvar']['outputFiles']=alg_input.get('outputFiles','')
+			#input data
+			if 'inputData' in alg_input:
+				if type(alg_input['inputData']) == type({}): 
+					for key,value in alg_input['inputData'].items():
+						splitter['jobvar_lists']['algInput_'+str(key)]={'type':'composite_string','param':{'value': value}}
+						if backend['name']=='dirac':	
+							#create a dirac_download action for each data
+							workflow['dirac_download_alg_'+str(key)]={'type':'dirac_download','actvar':{},'depend_on':[]}
+							workflow['cepc_alg']['depend_on']+=['dirac_download_alg_'+str(key)]	
+							workflow['dirac_download_alg_'+str(key)]['actvar']['input_lfn_jobvar_name']='algInput_'+str(key)
+#							workflow['dirac_download_alg_'+str(key)]['actvar']['destination']=os.path.join('../cepc_alg/',key)
+							workflow['dirac_download_alg_'+str(key)]['actvar']['destination']=os.path.join('./',key)
+			#upload output	
+			if backend['name']=='dirac':
+				workflow['dirac_upload_alg_output']={'type':'dirac_upload','actvar':{},'depend_on':['cepc_alg']}
+				workflow['dirac_upload_alg_output']['actvar']['overwrite']='True'	
+				workflow['dirac_upload_alg_output']['actvar']['files_to_upload']=alg_input.get('outputFiles')	
+				workflow['dirac_upload_alg_output']['actvar']['destination_dir']=alg_input.get('outputDir')	
+						
+
+
 		#deal with dirac backend
 		if backend['name']=='dirac':	
 			if 'sim' in job_steps:
-				#if runnning on remote, the input/output would be redirected to ../
+				#if runnning on remote, the input/output would be redirected to ./
 
 				#download input of cepc_sim
 				workflow['dirac_download_sim_input']={'type':'dirac_download','actvar':{},'depend_on':[]}
@@ -111,7 +157,7 @@ class Cepc(object):
 					workflow['dirac_upload_sim_output']={'type':'dirac_upload','actvar':{},'depend_on':['cepc_sim']}
 					workflow['dirac_upload_sim_output']['actvar']['overwrite']='True'	
 					workflow['dirac_upload_sim_output']['actvar']['files_to_upload']='*.slcio,GearOutput.xml'	
-
+					#todo : output_dir
 
 			if 'rec' in job_steps:
 				#download input of cepc_rec
@@ -124,6 +170,7 @@ class Cepc(object):
 				workflow['dirac_upload_rec_output']={'type':'dirac_upload','actvar':{},'depend_on':['cepc_rec']}
 				workflow['dirac_upload_rec_output']['actvar']['overwrite']='True'	
 				workflow['dirac_upload_rec_output']['actvar']['files_to_upload']='*\.*'	
+				#todo : output_dir
 
 
 
